@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>PrivGuard Prototype</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Zero-retention LLM privacy gateway</p>
+        <h1>PrivGuard</h1>
+        <p class="subtitle">
+          Detect sensitive data, rewrite prompts, score privacy risk, and scan LLM outputs before display.
+          Powered by <strong>OpenRouter</strong> — type any model name to use it.
+        </p>
+      </div>
+      <div class="status-card" aria-live="polite">
+        <span class="status-dot" id="providerDot"></span>
+        <div>
+          <strong id="providerMode">Checking backend...</strong>
+          <small>Only sanitized prompts are sent to the backend relay.</small>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="panel compose-panel">
+        <div class="panel-header">
+          <h2>1. User prompt</h2>
+          <span class="badge">browser-side analysis</span>
+        </div>
+
+        <div id="providerSettings" class="provider-settings">
+          <div class="settings-header">
+            <span class="badge safe">OpenRouter configuration</span>
+            <small class="muted">Stored in memory only. Not persisted.</small>
+          </div>
+          <div class="field-row">
+            <label for="apiKeyInput">API key</label>
+            <input type="password" id="apiKeyInput" placeholder="sk-or-v1-... (paste your OpenRouter key)" autocomplete="off">
+          </div>
+          <div class="field-row">
+            <label for="modelSelect">Model</label>
+            <select id="modelSelect">
+              <optgroup label="OpenAI / GPT">
+                <option value="openai/gpt-4o">GPT-4o</option>
+                <option value="openai/gpt-4o-mini" selected>GPT-4o mini</option>
+                <option value="openai/gpt-4.1">GPT-4.1</option>
+                <option value="openai/gpt-4.1-mini">GPT-4.1 mini</option>
+                <option value="openai/gpt-4.1-nano">GPT-4.1 nano</option>
+                <option value="openai/o3-mini">o3 mini</option>
+                <option value="openai/o4-mini">o4 mini</option>
+              </optgroup>
+              <optgroup label="Anthropic / Claude">
+                <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="anthropic/claude-opus-4">Claude Opus 4</option>
+                <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku</option>
+              </optgroup>
+              <optgroup label="Google / Gemini">
+                <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
+                <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+                <option value="google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
+              </optgroup>
+              <optgroup label="DeepSeek">
+                <option value="deepseek/deepseek-chat-v3-0324">DeepSeek Chat v3</option>
+                <option value="deepseek/deepseek-r1">DeepSeek R1 (reasoner)</option>
+                <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+              </optgroup>
+              <optgroup label="Alibaba / Qwen">
+                <option value="qwen/qwen3-235b-a22b">Qwen 3 235B</option>
+                <option value="qwen/qwen-2.5-72b-instruct">Qwen 2.5 72B</option>
+                <option value="qwen/qwen-2.5-coder-32b-instruct">Qwen 2.5 Coder 32B</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="__custom__">Custom model...</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field-row hidden" id="customModelRow">
+            <label for="modelInput">Custom model slug</label>
+            <input type="text" id="modelInput" placeholder="e.g. meta-llama/llama-3.1-70b-instruct" autocomplete="off">
+            <p class="hint" style="margin-top:4px;">
+              Browse all models at <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.
+            </p>
+          </div>
+        </div>
+
+        <textarea id="promptInput" spellcheck="true" placeholder="Example: My name is Ahmed. I live in Villa 22, Al Ain. Write an email to Dr. Sarah about my diabetes medication and ask her to call me at +971501234567."></textarea>
+        <div class="actions">
+          <button id="analyzeButton" type="button" class="secondary">Analyze only</button>
+          <button id="sendButton" type="button" class="primary">Sanitize and send</button>
+          <button id="clearButton" type="button" class="ghost">Clear</button>
+        </div>
+        <p class="hint">
+          This demo avoids localStorage/sessionStorage. Data is kept only in memory while the page is open.
+        </p>
+      </article>
+
+      <article class="panel risk-panel">
+        <div class="panel-header">
+          <h2>2. Privacy risk</h2>
+          <span class="badge" id="riskBadge">Low</span>
+        </div>
+        <div class="risk-meter" aria-label="Privacy risk score">
+          <div id="riskFill" class="risk-fill"></div>
+        </div>
+        <div class="risk-numbers">
+          <div>
+            <small>Before</small>
+            <strong id="riskBefore">0</strong>
+          </div>
+          <div>
+            <small>After</small>
+            <strong id="riskAfter">0</strong>
+          </div>
+          <div>
+            <small>Send allowed</small>
+            <strong id="sendAllowed">Yes</strong>
+          </div>
+        </div>
+        <h3>Detected categories</h3>
+        <div id="categoryChips" class="chips"><span class="muted">None detected</span></div>
+        <h3>Actions</h3>
+        <div id="actionChips" class="chips"><span class="muted">None</span></div>
+      </article>
+    </section>
+
+    <section class="grid lower-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>3. Sanitized prompt sent to provider</h2>
+          <span class="badge safe">low-risk target &le; 20</span>
+        </div>
+        <pre id="sanitizedPrompt" class="code-block">The sanitized prompt will appear here.</pre>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>4. Safe LLM response</h2>
+          <span class="badge">output control</span>
+        </div>
+        <div id="responseBox" class="response-box">The privacy-checked response will appear here.</div>
+      </article>
+    </section>
+
+    <section class="panel report-panel">
+      <div class="panel-header">
+        <h2>Privacy report</h2>
+        <div class="report-actions">
+          <button id="toggleReportButton" type="button" class="secondary small" aria-expanded="false" aria-controls="reportBox">Show report</button>
+          <button id="copyReportButton" type="button" class="ghost small" hidden>Copy report</button>
+        </div>
+      </div>
+      <pre id="reportBox" class="code-block compact" hidden>No report yet.</pre>
+    </section>
+  </main>
+
+  <script src="/privacy-engine.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
